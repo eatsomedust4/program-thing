@@ -1,0 +1,94 @@
+-- NSE
+
+
+local Mic = GetPart("Microphone")
+local LifeSensor = GetPart("LifeSensor")
+local telescope = assert(GetPartFromPort(1, 'Telescope'), 'Telescope connection to Port 1 missing.')
+local Modem = assert(GetPartFromPort(1, 'Modem'), 'Modem connection to Port 1 missing.')
+local webhookUrl = "https://discord.com/api/webhooks/1457527251464884264/IX6Gr_M3rYk_SB8DWAmh0M0EGLgoq1MFMpkJVPTzAaWho0pvZNernqWXiRZxXeqAmO3L"
+
+sentCoord = 0
+
+function sendNewCoord()
+	sentCoord = tostring(telescope:GetCurrentCoordinate())
+end
+
+sendNewCoord()
+
+
+local regionName = sentCoord
+
+
+local players = require("players") 
+
+
+local function sendToDiscordEmbed(title, description, fields)
+	local payload = {
+		embeds = {
+			{
+				title = title,
+				description = description,
+				fields = fields,
+				color = 3447003 
+			}
+		}
+	}
+
+	local success, err = pcall(function()
+		Modem:PostAsync(webhookUrl, JSONEncode(payload), Enum.HttpContentType.ApplicationJson)
+	end)
+
+	if not success then
+		warn("Failed to send data to webhook: " .. tostring(err))
+	else
+		print("Data successfully sent to webhook: " .. title)
+	end
+end
+
+
+local function onRegionLoad(playerNames)
+	local title = "Region Loaded"
+	local description = #playerNames > 0
+		and (regionName .. " was loaded by players: " .. table.concat(playerNames, ", "))
+		or (regionName .. " was loaded by an unknown player.")
+	local fields = {
+		{ name = "Region Name", value = regionName, inline = true },
+		{ name = "Players in Region", value = #playerNames > 0 and table.concat(playerNames, ", ") or "None", inline = true }
+	}
+
+	sendToDiscordEmbed(title, description, fields)
+	print(description)
+end
+
+
+local function checkLifeSensorOnce()
+	local presenceReading = LifeSensor:ListPlayers()
+	local playerNames = {}
+
+
+	for _, userId in ipairs(presenceReading) do
+		local username = players:GetUsername(userId) or ("Player " .. tostring(userId))
+		table.insert(playerNames, username)
+	end
+
+
+	onRegionLoad(playerNames)
+end
+
+
+Mic.Chatted:Connect(function(playerId, message)
+
+	local playerName = players:GetUsername(playerId) or ("Player " .. tostring(playerId))
+
+	local title = "Player Chat"
+	local description = string.format("Player %s said: '%s'", playerName, message)
+	local fields = {
+		{ name = "Region", value = regionName, inline = true }
+	}
+
+	sendToDiscordEmbed(title, description, fields)
+	print(description)
+end)
+
+
+checkLifeSensorOnce()
