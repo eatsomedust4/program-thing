@@ -306,4 +306,20 @@ table.insert(result, false)
 
 print(result[1], result[2], result[3], result[4], result[5])
 
-GetPartFromPort(1, "HyperDrive"):Configure({Coordinates=result})
+GetPartFromPort(2, "Anchor"):Configure({Anchored = false}) -- unanchor
+TriggerPort(4) -- turn on engines
+task.wait(10)
+TriggerPort(4) -- turn off engines
+
+task.wait(20) -- coast
+GetPartFromPort(2, "Anchor"):Configure({Anchored = true}) -- anchor
+
+GetPartFromPort(1, "HyperDrive"):Configure({Coordinates=result}) --set coords
+
+TriggerPort(3) -- spawn drone or logger
+task.wait(3) -- pause before unanchoring just in case
+
+GetPartFromPort(2, "Anchor"):Configure({Anchored = false}) -- unanchor
+
+task.wait(10) 
+TriggerPort(1) --warp
